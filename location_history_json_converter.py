@@ -97,8 +97,7 @@ def _distance(lat1, lon1, lat2, lon2):
         math.cos(_deg2rad(lat1)) * math.cos(_deg2rad(lat2)) * \
         math.sin(dlon/2) * math.sin(dlon/2)
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    d = R * c  # Distance in km
-    return d
+    return R * c
 
 
 def _deg2rad(deg):
@@ -108,9 +107,9 @@ def _deg2rad(deg):
 def _write_header(output, format, js_variable, separator):
     """Writes the file header for the specified format to output"""
 
-    if format == "json" or format == "js" or format == "jsonfull" or format == "jsfull":
-        if format == "js" or format == "jsfull":
-            output.write("window.%s = " % js_variable)
+    if format in ["json", "js", "jsonfull", "jsfull"]:
+        if format in ["js", "jsfull"]:
+            output.write(f"window.{js_variable} = ")
         output.write("{\"locations\":[")
         return
 
@@ -139,7 +138,7 @@ def _write_header(output, format, js_variable, separator):
         output.write("    <name>Location History</name>\n")
         return
 
-    if format == "gpx" or format == "gpxtracks":
+    if format in ["gpx", "gpxtracks"]:
         output.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
         output.write("<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" version=\"1.1\"")
         output.write(" creator=\"Google Latitude JSON Converter\"")
@@ -155,7 +154,7 @@ def _write_header(output, format, js_variable, separator):
 def _write_location(output, format, location, separator, first, last_location):
     """Writes the data for one location to output according to specified format"""
 
-    if format == "json" or format == "js":
+    if format in ["json", "js"]:
         if not first:
             output.write(",")
 
@@ -174,14 +173,14 @@ def _write_location(output, format, location, separator, first, last_location):
         output.write(json.dumps(item, separators=(',', ':')))
         return
 
-    if format == "jsonfull" or format == "jsfull":
+    if format in ["jsonfull", "jsfull"]:
         if not first:
             output.write(",")
 
         output.write(json.dumps(location, separators=(',', ':')))
         return
-        
-    
+
+
 
     if format == "csv":
         output.write(separator.join([
@@ -190,7 +189,7 @@ def _write_location(output, format, location, separator, first, last_location):
             "%.8f" % (location["longitudeE7"] / 10000000)
         ]) + "\n")
 
-    if format == "csvfull":
+    elif format == "csvfull":
         output.write(separator.join([
             datetime.utcfromtimestamp(int(_get_timestampms(location)) / 1000).strftime("%Y-%m-%d %H:%M:%S"),
             "%.8f" % (location["latitudeE7"] / 10000000),
@@ -202,7 +201,7 @@ def _write_location(output, format, location, separator, first, last_location):
             str(location.get("heading", ""))
         ]) + "\n")
 
-    if format == "csvfullest":
+    elif format == "csvfullest":
         output.write(separator.join([
             datetime.utcfromtimestamp(int(_get_timestampms(location)) / 1000).strftime("%Y-%m-%d %H:%M:%S"),
             "%.8f" % (location["latitudeE7"] / 10000000),
@@ -233,37 +232,7 @@ def _write_location(output, format, location, separator, first, last_location):
         else:
             output.write("0" + separator.join([""] * 13) + "\n")
 
-    if format == "kml":
-        output.write("    <Placemark>\n")
-
-        # Order of these tags is important to make valid KML: TimeStamp, ExtendedData, then Point
-        output.write("      <TimeStamp><when>")
-        time = datetime.utcfromtimestamp(int(_get_timestampms(location)) / 1000)
-        output.write(time.strftime("%Y-%m-%dT%H:%M:%SZ"))
-        output.write("</when></TimeStamp>\n")
-        if "accuracy" in location or "speed" in location or "altitude" in location:
-            output.write("      <ExtendedData>\n")
-            if "accuracy" in location:
-                output.write("        <Data name=\"accuracy\">\n")
-                output.write("          <value>%d</value>\n" % location["accuracy"])
-                output.write("        </Data>\n")
-            if "speed" in location:
-                output.write("        <Data name=\"speed\">\n")
-                output.write("          <value>%d</value>\n" % location["speed"])
-                output.write("        </Data>\n")
-            if "altitude" in location:
-                output.write("        <Data name=\"altitude\">\n")
-                output.write("          <value>%d</value>\n" % location["altitude"])
-                output.write("        </Data>\n")
-            output.write("      </ExtendedData>\n")
-        output.write(
-            "      <Point><coordinates>%s,%s</coordinates></Point>\n" %
-            (location["longitudeE7"] / 10000000, location["latitudeE7"] / 10000000)
-        )
-
-        output.write("    </Placemark>\n")
-
-    if format == "gpx":
+    elif format == "gpx":
         output.write(
             "  <wpt lat=\"%s\" lon=\"%s\">\n" %
             (location["latitudeE7"] / 10000000, location["longitudeE7"] / 10000000)
@@ -273,7 +242,7 @@ def _write_location(output, format, location, separator, first, last_location):
 
         time = datetime.utcfromtimestamp(int(_get_timestampms(location)) / 1000)
         output.write("    <time>%s</time>\n" % time.strftime("%Y-%m-%dT%H:%M:%SZ"))
-        output.write("    <desc>%s" % time.strftime("%Y-%m-%d %H:%M:%S"))
+        output.write(f'    <desc>{time.strftime("%Y-%m-%d %H:%M:%S")}')
         if "accuracy" in location or "speed" in location:
             output.write(" (")
             if "accuracy" in location:
@@ -286,7 +255,7 @@ def _write_location(output, format, location, separator, first, last_location):
         output.write("</desc>\n")
         output.write("  </wpt>\n")
 
-    if format == "gpxtracks":
+    elif format == "gpxtracks":
         if first:
             output.write("  <trk>\n")
             output.write("    <trkseg>\n")
@@ -323,14 +292,43 @@ def _write_location(output, format, location, separator, first, last_location):
                 output.write("          Speed:%d\n" % location["speed"])
             output.write("        </desc>\n")
         output.write("      </trkpt>\n")
+    elif format == "kml":
+        output.write("    <Placemark>\n")
+
+        # Order of these tags is important to make valid KML: TimeStamp, ExtendedData, then Point
+        output.write("      <TimeStamp><when>")
+        time = datetime.utcfromtimestamp(int(_get_timestampms(location)) / 1000)
+        output.write(time.strftime("%Y-%m-%dT%H:%M:%SZ"))
+        output.write("</when></TimeStamp>\n")
+        if "accuracy" in location or "speed" in location or "altitude" in location:
+            output.write("      <ExtendedData>\n")
+            if "accuracy" in location:
+                output.write("        <Data name=\"accuracy\">\n")
+                output.write("          <value>%d</value>\n" % location["accuracy"])
+                output.write("        </Data>\n")
+            if "speed" in location:
+                output.write("        <Data name=\"speed\">\n")
+                output.write("          <value>%d</value>\n" % location["speed"])
+                output.write("        </Data>\n")
+            if "altitude" in location:
+                output.write("        <Data name=\"altitude\">\n")
+                output.write("          <value>%d</value>\n" % location["altitude"])
+                output.write("        </Data>\n")
+            output.write("      </ExtendedData>\n")
+        output.write(
+            "      <Point><coordinates>%s,%s</coordinates></Point>\n" %
+            (location["longitudeE7"] / 10000000, location["latitudeE7"] / 10000000)
+        )
+
+        output.write("    </Placemark>\n")
 
 
 def _write_footer(output, format):
     """Writes the file footer for the specified format to output"""
 
-    if format == "json" or format == "js" or format == "jsonfull" or format == "jsfull":
+    if format in ["json", "js", "jsonfull", "jsfull"]:
         output.write("]}")
-        if format == "js" or format == "jsfull":
+        if format in ["js", "jsfull"]:
             output.write(";")
         return
 
@@ -338,10 +336,12 @@ def _write_footer(output, format):
         output.write("  </Document>\n</kml>\n")
         return
 
-    if format == "gpx" or format == "gpxtracks":
-        if format == "gpxtracks":
-            output.write("    </trkseg>\n")
-            output.write("  </trk>\n")
+    if format == "gpx":
+        output.write("</gpx>\n")
+        return
+    elif format == "gpxtracks":
+        output.write("    </trkseg>\n")
+        output.write("  </trk>\n")
         output.write("</gpx>\n")
         return
 
